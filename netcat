@@ -1,10 +1,13 @@
-#!/opt/local/bin/python2.7
+#BHP.py is a script from BH python which was converted to 3.x 
+#This script also has been alter to run on non posix or windows machine
+# swapped out getopt for argparse to get this to work. 
 
 import sys
 import socket
 import getopt
 import threading
 import subprocess
+import argparse
 
 # define some global variables
 listen = False
@@ -20,11 +23,13 @@ port = 0
 def run_command(command):
     # trim the newline
     command = command.rstrip()
+
     # run the command and get the output back
     try:
         output = subprocess.check_output(command, stderr=subprocess.STDOUT, shell=True)
     except:
         output = "Failed to execute command.\r\n"
+
     # send the output back to the client
     return output
 
@@ -184,47 +189,68 @@ def main():
     if not len(sys.argv[1:]):
         usage()
 
-    # read the commandline options
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hle:t:p:cu:",
-                                   ["help", "listen", "execute", "target", "port", "command", "upload"])
-    except getopt.GetoptError as err:
-        print(str(err))
-        usage()
+        
 
-    for o, a in opts:
-        if o in ("-h", "--help"):
-            usage()
-        elif o in ("-l", "--listen"):
-            listen = True
-        elif o in ("-e", "--execute"):
-            execute = a
-        elif o in ("-c", "--commandshell"):
-            command = True
-        elif o in ("-u", "--upload"):
-            upload_destination = a
-        elif o in ("-t", "--target"):
-            target = a
-        elif o in ("-p", "--port"):
-            port = int(a)
-        else:
-            assert False, "Unhandled Option"
+parser = argparse.ArgumentParser()
+parser.add_argument('-l', dest=listen, action='on',
+help = usage())
+parser.add_argument('-e', dest=execute, action='on',
+help = usage())
+parser.add_argument('-c', dest=command, action='on',
+help = usage())
+parser.add_argument('-t', dest=target, action='on',
+help = usage())
+parser.add_argument('-p', type=int, dest='port', action='store_const',
+                    help=usage())
+parser.add_argument('-q', action=sys.exit(),
+                    help=usage())
+parser.parse_args()
 
-    # are we going to listen or just send data from stdin
-    if not listen and len(target) and port > 0:
-        # read in the buffer from the commandline
-        # this will block, so send CTRL-D if not sending input
-        # to stdin
-        buffer = sys.stdin.read()
+# read the commandline options
+# try:
+#       opts, args = getopt.getopt(sys.argv[1:],"h:l:e:t:p:cu:",["help","listen","execute","target","port","command","upload"])
+# except getopt.GetoptError as err:
+#       print(str(err))
+#      usage()
 
-        # send data off
-        client_sender(buffer)
 
-        # we are going to listen and potentially
+# for o,a in opts:
+#       if o in ("-h","--help"):
+#              usage()
+#     elif o in ("-l","--listen"):
+#            listen = True
+#   elif o in ("-e", "--execute"):
+#          execute = a
+# elif o in ("-c", "--commandshell"):
+#        command = True
+# elif o in ("-u", "--upload"):
+#       upload_destination = a
+# elif o in ("-t", "--target"):
+#        target = a
+# elif o in ("-p", "--port"):
+#       port = int(a)
+# elif o in ("-q"):
+#        sys.exit()
+# else:
+#       assert False,"Unhandled Option"
+
+
+# are we going to listen or just send data from stdin
+if not listen and len(target) and port > 0:
+    # read in the buffer from the commandline
+    # this will block, so send CTRL-D if not sending input
+    # to stdin
+    buffer = sys.stdin.read()
+
+    # send data off
+    client_sender(buffer)
+
+    # we are going to listen and potentially
     # upload things, execute commands and drop a shell back
     # depending on our command line options above
-    if listen:
-        server_loop()
+if listen:
+    server_loop()
+    while listen is True:
+        print("listening")
 
-
-main()       
+main()
